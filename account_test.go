@@ -11,8 +11,8 @@ func TestAccountGet(t *testing.T) {
 		if r.URL.Path != "/v1/account" {
 			t.Errorf("wrong path: %s", r.URL.Path)
 		}
-		if r.Header.Get("Authorization") != "Bearer test-token" {
-			t.Error("expected JWT auth")
+		if r.Header.Get("X-API-Key") != "test-key" {
+			t.Error("expected API key auth")
 		}
 		writeJSON(w, 200, fixtureAccountResp)
 	})
@@ -78,35 +78,6 @@ func TestAccountUpdateEmail(t *testing.T) {
 	}
 	if resp.Message != "Success" {
 		t.Errorf("wrong message: %s", resp.Message)
-	}
-}
-
-func TestAccountUpdatePassword(t *testing.T) {
-	client, _ := setupTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "PUT" {
-			t.Errorf("expected PUT, got %s", r.Method)
-		}
-		writeJSON(w, 200, fixtureMsgResp)
-	})
-	resp, err := client.Account.UpdatePassword(context.Background(), "old", "new")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resp.Message != "Success" {
-		t.Errorf("wrong message: %s", resp.Message)
-	}
-}
-
-func TestAccountDelete(t *testing.T) {
-	client, _ := setupTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "DELETE" {
-			t.Errorf("expected DELETE, got %s", r.Method)
-		}
-		w.WriteHeader(204)
-	})
-	err := client.Account.Delete(context.Background(), "mypassword")
-	if err != nil {
-		t.Fatal(err)
 	}
 }
 

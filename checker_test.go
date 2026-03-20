@@ -28,13 +28,11 @@ func TestCheckerCheck(t *testing.T) {
 func TestCheckerNoAuth(t *testing.T) {
 	client, _ := setupTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		// When auth=none, no auth headers should be set (even if client has them configured)
-		// The client has api_key and token set, but authNone means they shouldn't be sent
 		writeJSON(w, 200, fixtureCheckerResp)
 	})
 	// Clear auth credentials to truly verify no auth is sent
 	client.client.mu.Lock()
 	client.client.apiKey = ""
-	client.client.token = ""
 	client.client.mu.Unlock()
 
 	resp, err := client.Checker.Check(context.Background(), "Acme", "us-fl")

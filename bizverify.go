@@ -14,11 +14,6 @@ func WithAPIKey(key string) Option {
 	return func(c *Client) { c.client.apiKey = key }
 }
 
-// WithToken sets the JWT token for authentication.
-func WithToken(token string) Option {
-	return func(c *Client) { c.client.token = token }
-}
-
 // WithBaseURL sets the base URL for API requests.
 func WithBaseURL(url string) Option {
 	return func(c *Client) { c.client.baseURL = strings.TrimRight(url, "/") }
@@ -49,6 +44,13 @@ type Client struct {
 	Account      *AccountService
 	Billing      *BillingService
 	Checker      *CheckerService
+	Config       *ConfigService
+}
+
+// LastResponseMeta returns metadata parsed from the most recent API response headers,
+// including credit balance and rate limit information.
+func (c *Client) LastResponseMeta() *ResponseMeta {
+	return c.client.LastResponseMeta()
 }
 
 // New creates a new BizVerify client with the given options.
@@ -72,6 +74,7 @@ func New(opts ...Option) *Client {
 	c.Account = &AccountService{client: c.client}
 	c.Billing = &BillingService{client: c.client}
 	c.Checker = &CheckerService{client: c.client}
+	c.Config = &ConfigService{client: c.client}
 
 	return c
 }

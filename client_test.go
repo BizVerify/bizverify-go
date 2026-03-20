@@ -32,7 +32,7 @@ func TestClient204ReturnsNil(t *testing.T) {
 		w.WriteHeader(204)
 	})
 	ctx := context.Background()
-	err := client.client.request(ctx, requestOptions{method: "DELETE", path: "/test", auth: authJWT}, nil)
+	err := client.client.request(ctx, requestOptions{method: "DELETE", path: "/test", auth: authAPIKey}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,17 +100,6 @@ func TestClientAPIKeyHeader(t *testing.T) {
 	client.client.request(ctx, requestOptions{method: "GET", path: "/test", auth: authAPIKey}, nil)
 }
 
-func TestClientJWTHeader(t *testing.T) {
-	client, _ := setupTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-		if got := r.Header.Get("Authorization"); got != "Bearer test-token" {
-			t.Errorf("expected 'Bearer test-token', got '%s'", got)
-		}
-		writeJSON(w, 200, map[string]interface{}{})
-	})
-	ctx := context.Background()
-	client.client.request(ctx, requestOptions{method: "GET", path: "/test", auth: authJWT}, nil)
-}
-
 func TestClientNoAuthHeader(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("X-API-Key") != "" {
@@ -140,4 +129,48 @@ func TestClientQueryParams(t *testing.T) {
 		query: map[string]string{"days": "30"},
 		auth:  authNone,
 	}, nil)
+}
+
+func TestClientLastResponseMeta(t *testing.T) {
+	client, _ := setupTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		writeJSONWithMeta(w, 200, map[string]interface{}{"ok": true})
+	})
+	ctx := context.Background()
+	client.client.request(ctx, requestOptions{method: "GET", path: "/test", auth: authAPIKey}, nil)
+
+	meta := client.LastResponseMeta()
+	if meta == nil {
+		t.Fatal("expected response meta, got nil")
+	}
+	if meta.CreditsRemaining == nil || *meta.CreditsRemaining != 95 {
+		t.Errorf("wrong credits remaining: %v", meta.CreditsRemaining)
+	}
+	if meta.CreditsCharged == nil || *meta.CreditsCharged != 5 {
+		t.Errorf("wrong credits charged: %v", meta.CreditsCharged)
+	}
+	if meta.RateLimitLimit == nil || *meta.RateLimitLimit != 100 {
+		t.Errorf("wrong rate limit: %v", meta.RateLimitLimit)
+	}
+	if meta.RateLimitRemaining == nil || *meta.RateLimitRemaining != 99 {
+		t.Errorf("wrong rate limit remaining: %v", meta.RateLimitRemaining)
+	}
+	if meta.RateLimitReset == nil || *meta.RateLimitReset != 1700000000 {
+		t.Errorf("wrong rate limit reset: %v", meta.RateLimitReset)
+	}
+}
+
+func TestClientLastResponseMetaNoHeaders(t *testing.T) {
+	client, _ := setupTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, 200, map[string]interface{}{"ok": true})
+	})
+	ctx := context.Background()
+	client.client.request(ctx, requestOptions{method: "GET", path: "/test", auth: authNone}, nil)
+
+	meta := client.LastResponseMeta()
+	if meta == nil {
+		t.Fatal("expected response meta, got nil")
+	}
+	if meta.CreditsRemaining != nil {
+		t.Errorf("expected nil credits remaining, got %v", meta.CreditsRemaining)
+	}
 }

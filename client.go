@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -22,17 +23,16 @@ type authMode int
 
 const (
 	authAPIKey authMode = iota
-	authJWT
 	authNone
 )
 
 type httpClient struct {
-	baseURL    string
-	client     *http.Client
-	maxRetries int
-	apiKey     string
-	token      string
-	mu         sync.RWMutex
+	baseURL          string
+	client           *http.Client
+	maxRetries       int
+	apiKey           string
+	lastResponseMeta *ResponseMeta
+	mu               sync.RWMutex
 }
 
 type requestOptions struct {
@@ -43,16 +43,17 @@ type requestOptions struct {
 	auth   authMode
 }
 
-func (c *httpClient) setToken(token string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.token = token
-}
-
 func (c *httpClient) setAPIKey(apiKey string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.apiKey = apiKey
+}
+
+// LastResponseMeta returns metadata from the most recent API response.
+func (c *httpClient) LastResponseMeta() *ResponseMeta {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.lastResponseMeta
 }
 
 func (c *httpClient) request(ctx context.Context, opts requestOptions, result interface{}) error {
@@ -116,6 +117,18 @@ func (c *httpClient) request(ctx context.Context, opts requestOptions, result in
 			return lastErr
 		}
 
+		// Parse response meta headers
+		meta := &ResponseMeta{
+			CreditsRemaining:   parseIntHeader(resp, "X-Credits-Remaining"),
+			CreditsCharged:     parseIntHeader(resp, "X-Credits-Charged"),
+			RateLimitLimit:     parseIntHeader(resp, "X-Ratelimit-Limit"),
+			RateLimitRemaining: parseIntHeader(resp, "X-Ratelimit-Remaining"),
+			RateLimitReset:     parseIntHeader(resp, "X-Ratelimit-Reset"),
+		}
+		c.mu.Lock()
+		c.lastResponseMeta = meta
+		c.mu.Unlock()
+
 		if resp.StatusCode == 204 {
 			return nil
 		}
@@ -164,14 +177,19 @@ func (c *httpClient) setHeaders(req *http.Request, auth authMode, hasBody bool) 
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	switch auth {
-	case authAPIKey:
-		if c.apiKey != "" {
-			req.Header.Set("X-API-Key", c.apiKey)
-		}
-	case authJWT:
-		if c.token != "" {
-			req.Header.Set("Authorization", "Bearer "+c.token)
-		}
+	if auth == authAPIKey && c.apiKey != "" {
+		req.Header.Set("X-API-Key", c.apiKey)
 	}
+}
+
+func parseIntHeader(resp *http.Response, name string) *int {
+	v := resp.Header.Get(name)
+	if v == "" {
+		return nil
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil {
+		return nil
+	}
+	return &n
 }

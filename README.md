@@ -10,7 +10,7 @@ go get github.com/bizverify/bizverify-go
 
 ## Quick Start
 
-### Verify a Business Entity
+### Authentication (Passwordless)
 
 ```go
 package main
@@ -24,29 +24,62 @@ import (
 )
 
 func main() {
-    client := bv.New(bv.WithAPIKey("bv_live_..."))
+    client := bv.New()
     ctx := context.Background()
 
-    // Synchronous verification (cached result)
-    resp, err := client.Verification.Verify(ctx, bv.VerifyParams{
-        EntityName:   "Acme Inc",
-        Jurisdiction: "us-fl",
-    })
+    // Step 1: Request an OTP code via email
+    _, err := client.Auth.RequestAccess(ctx, "user@example.com", true)
     if err != nil {
         log.Fatal(err)
     }
-    fmt.Println(resp.Status, string(resp.Data))
 
-    // Verify and wait for async job to complete
-    job, err := client.Verification.VerifyAndWait(ctx, bv.VerifyParams{
-        EntityName:   "Acme Inc",
-        Jurisdiction: "us-fl",
-    }, nil)
+    // Step 2: Verify the code — client is auto-configured with the returned API key
+    resp, err := client.Auth.VerifyAccess(ctx, "user@example.com", "123456", nil)
     if err != nil {
         log.Fatal(err)
     }
-    fmt.Println(job.Status, string(job.Result))
+    fmt.Println("API Key:", resp.APIKey) // Store this for future use
+
+    // All authenticated endpoints now work automatically
+    account, err := client.Account.Get(ctx)
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Println(account.CreditBalance)
 }
+```
+
+### Using an Existing API Key
+
+```go
+client := bv.New(bv.WithAPIKey("bv_live_..."))
+```
+
+### Verify a Business Entity
+
+```go
+client := bv.New(bv.WithAPIKey("bv_live_..."))
+ctx := context.Background()
+
+// Synchronous verification (cached result)
+resp, err := client.Verification.Verify(ctx, bv.VerifyParams{
+    EntityName:   "Acme Inc",
+    Jurisdiction: "us-fl",
+})
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println(resp.Status, string(resp.Data))
+
+// Verify and wait for async job to complete
+job, err := client.Verification.VerifyAndWait(ctx, bv.VerifyParams{
+    EntityName:   "Acme Inc",
+    Jurisdiction: "us-fl",
+}, nil)
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println(job.Status, string(job.Result))
 ```
 
 ### Search for Entities
@@ -72,21 +105,39 @@ if err := iter.Err(); err != nil {
 }
 ```
 
-### Authentication (JWT)
+### Response Metadata (Credits & Rate Limits)
+
+After any API call, inspect credits and rate limit info from response headers:
 
 ```go
-client := bv.New()
+resp, err := client.Verification.Verify(ctx, bv.VerifyParams{
+    EntityName:   "Acme Inc",
+    Jurisdiction: "us-fl",
+})
+if err != nil {
+    log.Fatal(err)
+}
 
-// Register
-reg, err := client.Auth.Register(ctx, "user@example.com", "password123", true)
-fmt.Println(reg.APIKey) // Store this
+meta := client.LastResponseMeta()
+if meta.CreditsRemaining != nil {
+    fmt.Printf("Credits remaining: %d\n", *meta.CreditsRemaining)
+}
+if meta.CreditsCharged != nil {
+    fmt.Printf("Credits charged: %d\n", *meta.CreditsCharged)
+}
+```
 
-// Login (auto-stores JWT token)
-login, err := client.Auth.Login(ctx, "user@example.com", "password123")
+### Configuration & Jurisdictions
 
-// Now JWT-authenticated endpoints work
-account, err := client.Account.Get(ctx)
-fmt.Println(account.CreditBalance)
+```go
+// Get full API configuration (no auth required)
+config, err := client.Config.Get(ctx)
+
+// List available jurisdictions (no auth required)
+jurisdictions, err := client.Config.Jurisdictions(ctx)
+for _, j := range jurisdictions.Jurisdictions {
+    fmt.Printf("%s: %s\n", j.Code, j.Name)
+}
 ```
 
 ### Error Handling
@@ -119,11 +170,12 @@ if err != nil {
 
 | Service | Methods |
 |---------|---------|
-| `client.Auth` | `Register()`, `Login()`, `VerifyEmail()`, `ResendVerification()`, `ForgotPassword()`, `ResetPassword()` |
+| `client.Auth` | `RequestAccess()`, `VerifyAccess()` |
+| `client.Config` | `Get()`, `Jurisdictions()` |
 | `client.Verification` | `Verify()`, `VerifyAndWait()`, `GetStatus()` |
 | `client.Entities` | `Get()`, `History()` |
 | `client.Search` | `Find()`, `FindAll()` |
-| `client.Account` | `Get()`, `Usage()`, `DataExport()`, `UpdateEmail()`, `UpdatePassword()`, `Delete()`, `CreateKey()`, `RevokeKey()` |
+| `client.Account` | `Get()`, `Usage()`, `DataExport()`, `UpdateEmail()`, `CreateKey()`, `RevokeKey()` |
 | `client.Billing` | `Get()`, `Purchase()` |
 | `client.Checker` | `Check()` |
 
@@ -132,7 +184,6 @@ if err != nil {
 ```go
 client := bv.New(
     bv.WithAPIKey("bv_live_..."),          // API key authentication
-    bv.WithToken("eyJ..."),                // JWT authentication
     bv.WithBaseURL("https://..."),         // Custom base URL
     bv.WithMaxRetries(2),                  // Retry on 5xx (default: 2)
     bv.WithTimeout(30 * time.Second),      // Request timeout (default: 30s)

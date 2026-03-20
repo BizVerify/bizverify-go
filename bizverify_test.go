@@ -28,6 +28,9 @@ func TestNewCreatesAllServices(t *testing.T) {
 	if c.Checker == nil {
 		t.Error("Checker service is nil")
 	}
+	if c.Config == nil {
+		t.Error("Config service is nil")
+	}
 }
 
 func TestWithAPIKey(t *testing.T) {
@@ -65,5 +68,12 @@ func TestDefaultValues(t *testing.T) {
 	}
 	if c.client.maxRetries != defaultMaxRetries {
 		t.Errorf("expected default retries, got %d", c.client.maxRetries)
+	}
+}
+
+func TestLastResponseMetaDelegatesToHTTPClient(t *testing.T) {
+	c := New()
+	if c.LastResponseMeta() != nil {
+		t.Error("expected nil meta before any request")
 	}
 }

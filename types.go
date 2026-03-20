@@ -40,18 +40,58 @@ type User struct {
 	CreatedAt     string `json:"created_at"`
 }
 
-type RegisterResponse struct {
-	User   User   `json:"user"`
-	APIKey string `json:"api_key"`
+type RequestAccessParams struct {
+	Email       string `json:"email"`
+	AcceptTerms bool   `json:"accept_terms"`
 }
 
-type LoginResponse struct {
-	Token string `json:"token"`
-	User  User   `json:"user"`
+type RequestAccessResponse struct {
+	Message string `json:"message"`
+}
+
+type VerifyAccessParams struct {
+	Email string  `json:"email"`
+	Code  string  `json:"code"`
+	Label *string `json:"label,omitempty"`
+}
+
+type VerifyAccessResponse struct {
+	APIKey string `json:"api_key"`
+	KeyID  string `json:"key_id"`
+	Label  string `json:"label"`
+}
+
+type ResponseMeta struct {
+	CreditsRemaining   *int `json:"credits_remaining"`
+	CreditsCharged     *int `json:"credits_charged"`
+	RateLimitLimit     *int `json:"rate_limit_limit"`
+	RateLimitRemaining *int `json:"rate_limit_remaining"`
+	RateLimitReset     *int `json:"rate_limit_reset"`
 }
 
 type MessageResponse struct {
 	Message string `json:"message"`
+}
+
+type ConfigResponse struct {
+	Jurisdictions interface{} `json:"jurisdictions"`
+	Checker       interface{} `json:"checker"`
+	Pricing       interface{} `json:"pricing"`
+	Features      interface{} `json:"features"`
+	RateLimits    interface{} `json:"rateLimits"`
+	Status        interface{} `json:"status"`
+	Legal         interface{} `json:"legal"`
+	Docs          interface{} `json:"docs"`
+}
+
+type JurisdictionInfo struct {
+	Code     string          `json:"code"`
+	Name     string          `json:"name"`
+	Features map[string]bool `json:"features"`
+}
+
+type JurisdictionsResponse struct {
+	Jurisdictions []JurisdictionInfo `json:"jurisdictions"`
 }
 
 type VerifyParams struct {

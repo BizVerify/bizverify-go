@@ -14,7 +14,6 @@ func setupTestClient(t *testing.T, handler http.HandlerFunc) (*Client, *httptest
 	client := New(
 		WithBaseURL(server.URL),
 		WithAPIKey("test-key"),
-		WithToken("test-token"),
 		WithMaxRetries(0),
 	)
 	return client, server
@@ -27,7 +26,6 @@ func setupTestClientRetries(t *testing.T, handler http.HandlerFunc, retries int)
 	client := New(
 		WithBaseURL(server.URL),
 		WithAPIKey("test-key"),
-		WithToken("test-token"),
 		WithMaxRetries(retries),
 	)
 	return client, server
@@ -35,6 +33,17 @@ func setupTestClientRetries(t *testing.T, handler http.HandlerFunc, retries int)
 
 func writeJSON(w http.ResponseWriter, status int, body interface{}) {
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(body)
+}
+
+func writeJSONWithMeta(w http.ResponseWriter, status int, body interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Credits-Remaining", "95")
+	w.Header().Set("X-Credits-Charged", "5")
+	w.Header().Set("X-Ratelimit-Limit", "100")
+	w.Header().Set("X-Ratelimit-Remaining", "99")
+	w.Header().Set("X-Ratelimit-Reset", "1700000000")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(body)
 }
@@ -50,22 +59,14 @@ func errBody(code, message string) map[string]interface{} {
 
 func ptr[T any](v T) *T { return &v }
 
-var fixtureRegisterResp = map[string]interface{}{
-	"user": map[string]interface{}{
-		"id": "550e8400-e29b-41d4-a716-446655440000", "email": "test@example.com",
-		"email_verified": false, "plan": "free", "credit_balance": float64(100),
-		"created_at": "2026-01-01T00:00:00.000Z",
-	},
-	"api_key": "bv_live_abc123def456",
+var fixtureRequestAccessResp = map[string]interface{}{
+	"message": "Verification code sent to your email",
 }
 
-var fixtureLoginResp = map[string]interface{}{
-	"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test",
-	"user": map[string]interface{}{
-		"id": "550e8400-e29b-41d4-a716-446655440000", "email": "test@example.com",
-		"email_verified": true, "plan": "free", "credit_balance": float64(100),
-		"created_at": "2026-01-01T00:00:00.000Z",
-	},
+var fixtureVerifyAccessResp = map[string]interface{}{
+	"api_key": "bv_live_abc123def456",
+	"key_id":  "key_123",
+	"label":   "my-key",
 }
 
 var fixtureMsgResp = map[string]interface{}{"message": "Success"}
@@ -162,4 +163,24 @@ var fixtureCheckerResp = map[string]interface{}{
 		"jurisdiction": "us-fl", "confidence": 0.9,
 	}},
 	"query": "Acme", "jurisdiction": "us-fl", "total": float64(1),
+}
+
+var fixtureConfigResp = map[string]interface{}{
+	"jurisdictions": map[string]interface{}{"us-fl": map[string]interface{}{"name": "Florida"}},
+	"checker":       map[string]interface{}{},
+	"pricing":       map[string]interface{}{},
+	"features":      map[string]interface{}{},
+	"rateLimits":    map[string]interface{}{},
+	"status":        map[string]interface{}{},
+	"legal":         map[string]interface{}{},
+	"docs":          map[string]interface{}{},
+}
+
+var fixtureJurisdictionsResp = map[string]interface{}{
+	"jurisdictions": []interface{}{
+		map[string]interface{}{
+			"code": "us-fl", "name": "Florida",
+			"features": map[string]interface{}{"search": true, "details": true},
+		},
+	},
 }
