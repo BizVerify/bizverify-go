@@ -82,20 +82,20 @@ var fixtureVerifyAsyncResp = map[string]interface{}{
 
 var fixtureJobPendingResp = map[string]interface{}{
 	"id": "job_456", "status": "pending", "jurisdiction": "us-fl", "query": "Acme Inc",
-	"verification_level": "full", "credits_charged": float64(15),
+	"verification_level": "deep", "credits_charged": float64(15),
 	"created_at": "2026-01-01T00:00:00.000Z",
 }
 
 var fixtureJobCompletedResp = map[string]interface{}{
 	"id": "job_456", "status": "completed", "jurisdiction": "us-fl", "query": "Acme Inc",
-	"verification_level": "full", "credits_charged": float64(15),
+	"verification_level": "deep", "credits_charged": float64(15),
 	"result": map[string]interface{}{"exists": true},
 	"created_at": "2026-01-01T00:00:00.000Z", "completed_at": "2026-01-01T00:01:00.000Z",
 }
 
 var fixtureJobFailedResp = map[string]interface{}{
 	"id": "job_456", "status": "failed", "jurisdiction": "us-fl", "query": "Acme Inc",
-	"verification_level": "full", "credits_charged": float64(15), "error": "Scraper timeout",
+	"verification_level": "deep", "credits_charged": float64(15), "error": "Scraper timeout",
 	"created_at": "2026-01-01T00:00:00.000Z", "completed_at": "2026-01-01T00:01:00.000Z",
 }
 

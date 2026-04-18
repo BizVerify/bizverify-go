@@ -94,10 +94,20 @@ type JurisdictionsResponse struct {
 	Jurisdictions []JurisdictionInfo `json:"jurisdictions"`
 }
 
+// VerificationLevel values accepted by the API.
+// Use VerificationLevelQuick for a fast lookup or VerificationLevelDeep for a
+// thorough verification.
+const (
+	VerificationLevelQuick = "quick"
+	VerificationLevelDeep  = "deep"
+)
+
 type VerifyParams struct {
-	EntityName        string `json:"entity_name"`
-	Jurisdiction      string `json:"jurisdiction"`
-	EntityType        string `json:"entity_type,omitempty"`
+	EntityName   string `json:"entity_name"`
+	Jurisdiction string `json:"jurisdiction"`
+	EntityType   string `json:"entity_type,omitempty"`
+	// VerificationLevel selects the tier of verification to run.
+	// Accepted values: "quick" (VerificationLevelQuick) or "deep" (VerificationLevelDeep).
 	VerificationLevel string `json:"verification_level,omitempty"`
 	ForceRefresh      *bool  `json:"force_refresh,omitempty"`
 	WebhookURL        string `json:"webhook_url,omitempty"`
@@ -113,10 +123,12 @@ type VerifyResponse struct {
 }
 
 type JobStatusResponse struct {
-	ID                string          `json:"id"`
-	Status            string          `json:"status"`
-	Jurisdiction      string          `json:"jurisdiction"`
-	Query             string          `json:"query"`
+	ID           string `json:"id"`
+	Status       string `json:"status"`
+	Jurisdiction string `json:"jurisdiction"`
+	Query        string `json:"query"`
+	// VerificationLevel echoes the tier the job was submitted at.
+	// One of "quick" (VerificationLevelQuick) or "deep" (VerificationLevelDeep).
 	VerificationLevel string          `json:"verification_level"`
 	CreditsCharged    int             `json:"credits_charged"`
 	Result            json.RawMessage `json:"result,omitempty"`
